@@ -1,0 +1,83 @@
+---
+title: "gis_week_4_HW"
+author: "Olivia Xing"
+date: "2025-10-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## TASK
+In homework 4, we are asked to read both the global gender inequality data and the world spatial data, and generate a new column of difference in inequality between 2010 and 2019.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(sf)
+library(tidyverse)
+library(here)
+library(countrycode)
+library(janitor)
+```
+
+
+# Read the global gender inequality data
+```{r}
+gender_ineq <- read_csv(here("HDR25_Composite_indices_complete_time_series.csv"),
+                        locale = locale(encoding = "latin1"))
+```
+# Read the spatial world data
+```{r}
+world_data <- st_read(here("World_Countries_(Generalized)_-573431906301700955", "World_Countries_Generalized.shp"))
+```
+
+
+# Join the global gender inequality index to the World spatial data 
+
+
+Before processing the data, we must specify which columns we will manipulate. After comparing the two data sets, we have two methods: a) joining on the country name columns; b) joining on the ISO code columns with additional operations.
+
+Given our introduction to the ‘countrycode’ package, we will attempt the second method while the first is straightforward.
+
+Firstly, we need to create the difference column
+```{r}
+gender_ineq_select <- gender_ineq %>%
+  clean_names() %>%
+  select(iso3, country, hdi_2010, hdi_2019) %>%
+  mutate(diff_2010_2019 = hdi_2019 - hdi_2010)
+```
+
+Then, we want to join the data. In the first method, we can try directly joining on country names.
+```{r}
+join_gender_world <- world_data %>%
+  clean_names() %>%
+  left_join(.,
+            gender_ineq_select,
+            by = c("country" = "country"))
+```
+
+In the second method, we can unify ISO code through "countrycode" and join on them. 
+
+After comparing the ISO code columns from two separate datasets, we must convert each ISO code into two characters in the gender inequality data to match the ISO code in the world data. Alternatively, we could convert the ISO codes in the world data to match our gender data. Since we intend to use a left join later from the world data to the gender data, it is more appropriate to convert the ISO codes in the gender data.
+```{r, warning=FALSE}
+gender_ineq_select_iso <- gender_ineq_select %>%
+  mutate(iso_code = countrycode::countrycode(iso3, origin = "iso3c", destination = "iso2c"))
+```
+
+Now, we can join data sets again through ISO codes.
+```{r, warning=FALSE}
+join_gender_world_2 <- world_data %>%
+  clean_names() %>%
+  left_join(.,
+            gender_ineq_select_iso,
+            by = c("aff_iso" = "iso_code"))
+```
+The data for “join_gender_world_2” contains 261 objects while “join_gender_world” has 251. However, when the join is performed on the “ISO” column from the world_data, the “join_gender_world_3” dataset contains 251 objects.
+```{r}
+join_gender_world_3 <- world_data %>%
+  clean_names() %>%
+  left_join(.,
+            gender_ineq_select_iso,
+            by = c("iso" = "iso_code"))
+```
+# Discussion
+Upon reviewing the data, we observe that there are 251 features in the world spatial data. This indicates the presence of missing values in the ‘join_gender_world_2’ column after the join. Therefore, we should join on the ‘ISO’ column from the ‘world_data’ rather than the ‘aff_iso’ column.
