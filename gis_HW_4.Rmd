@@ -47,6 +47,7 @@ gender_ineq_select <- gender_ineq %>%
 ```
 
 Then, we want to join the data. In the first method, we can try directly joining on country names.
+but be careful with joining on characters - universiy of cambridge = cambridge university, but they are not the same characters
 ```{r}
 join_gender_world <- world_data %>%
   clean_names() %>%
